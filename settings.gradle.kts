@@ -31,6 +31,18 @@ plugins {
 // the same folder name one level up, and the old co-development lookup bound to
 // it by mistake, breaking configuration with ":common ... does not exist".
 val coreDir = File(rootDir, "core")
+val corePatchDir = File(rootDir, "core-patch")
+if (corePatchDir.exists() && coreDir.exists()) {
+    corePatchDir
+        .walkTopDown()
+        .filter { it.isFile }
+        .forEach { source ->
+            val rel = source.relativeTo(corePatchDir)
+            val dest = File(coreDir, rel.path)
+            dest.parentFile?.mkdirs()
+            source.copyTo(dest, overwrite = true)
+        }
+}
 val serviceDir = File(rootDir, "core/service")
 val mediaDir = File(rootDir, "core/media")
 

@@ -151,6 +151,7 @@ import com.maxrave.simpmusic.ui.icon.DownloadForOfflineOutlined
 import com.maxrave.simpmusic.ui.icon.Downloading
 import com.maxrave.simpmusic.ui.icon.Edit
 import com.maxrave.simpmusic.ui.icon.FavoriteBorder
+import com.maxrave.simpmusic.ui.icon.GraphicEq
 import com.maxrave.simpmusic.ui.icon.KeyboardArrowDown
 import com.maxrave.simpmusic.ui.icon.KeyboardDoubleArrowDown
 import com.maxrave.simpmusic.ui.icon.KeyboardDoubleArrowUp
@@ -1830,17 +1831,30 @@ fun NowPlayingBottomSheet(
                     }
                     Crossfade(targetState = setSleepTimerEnable) {
                         if (it) {
-                            ActionButton(
-                                icon = SimpIcons.Speed,
-                                text =
-                                    if (crossfadeEnabled != DataStoreManager.TRUE) {
-                                        Res.string.playback_speed_pitch
-                                    } else {
-                                        Res.string.playback_speed_pitch_disabled
-                                    },
-                                enable = crossfadeEnabled != DataStoreManager.TRUE,
-                            ) {
-                                changePlaybackSpeedPitch = true
+                            val sharedViewModel = koinInject<SharedViewModel>()
+                            val isVocalsOnly by sharedViewModel.vocalsOnlyEnabled.collectAsStateWithLifecycle()
+                            Column {
+                                ActionButton(
+                                    icon = SimpIcons.GraphicEq,
+                                    textString = if (isVocalsOnly) "Vocals only (Spleeter ON)" else "Vocals only (Spleeter)",
+                                    text = null,
+                                    textColor = if (isVocalsOnly) seed else null,
+                                    iconColor = if (isVocalsOnly) seed else Color.White,
+                                ) {
+                                    sharedViewModel.toggleVocalsOnly()
+                                }
+                                ActionButton(
+                                    icon = SimpIcons.Speed,
+                                    text =
+                                        if (crossfadeEnabled != DataStoreManager.TRUE) {
+                                            Res.string.playback_speed_pitch
+                                        } else {
+                                            Res.string.playback_speed_pitch_disabled
+                                        },
+                                    enable = crossfadeEnabled != DataStoreManager.TRUE,
+                                ) {
+                                    changePlaybackSpeedPitch = true
+                                }
                             }
                         }
                     }
