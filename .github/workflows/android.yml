@@ -24,6 +24,12 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Apply Spleeter Vocal Extractor core overlay
+        run: |
+          if [ -d "core-patch" ]; then
+            cp -r core-patch/* core/
+          fi
+
       - name: set up JDK 21
         uses: actions/setup-java@v4
         with:

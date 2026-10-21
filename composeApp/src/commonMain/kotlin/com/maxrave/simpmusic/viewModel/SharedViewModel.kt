@@ -226,23 +226,33 @@ class SharedViewModel(
     fun toggleVocalsOnly() {
         val next = !_vocalsOnlyEnabled.value
         _vocalsOnlyEnabled.value = next
-        if (next) {
-            mediaPlayerHandler.player.setEqualizer(vocalsOnlyBandsDb, vocalsOnlyPreampDb)
-        } else {
-            viewModelScope.launch {
-                val eqEnabled = dataStoreManager.equalizerEnabled.first() == TRUE
-                val eqType = dataStoreManager.equalizerType.first()
-                if (eqEnabled && eqType == DataStoreManager.EQUALIZER_TYPE_BUILT_IN) {
-                    val stored = dataStoreManager.equalizerBands.first()
-                    val parsed = stored.split(",").mapNotNull { it.trim().toFloatOrNull() }
-                    val bands = List(10) { parsed.getOrElse(it) { 0f } }
-                    val preamp = dataStoreManager.equalizerPreamp.first()
-                    mediaPlayerHandler.player.setEqualizer(bands, preamp)
-                } else {
-                    mediaPlayerHandler.player.setEqualizer(List(10) { 0f }, 0f)
+        mediaPlayerHandler.player.setVocalExtractor(next)
+        if (getPlatform() != Platform.Android) {
+            if (next) {
+                mediaPlayerHandler.player.setEqualizer(vocalsOnlyBandsDb, vocalsOnlyPreampDb)
+            } else {
+                viewModelScope.launch {
+                    val eqEnabled = dataStoreManager.equalizerEnabled.first() == TRUE
+                    val eqType = dataStoreManager.equalizerType.first()
+                    if (eqEnabled && eqType == DataStoreManager.EQUALIZER_TYPE_BUILT_IN) {
+                        val stored = dataStoreManager.equalizerBands.first()
+                        val parsed = stored.split(",").mapNotNull { it.trim().toFloatOrNull() }
+                        val bands = List(10) { parsed.getOrElse(it) { 0f } }
+                        val preamp = dataStoreManager.equalizerPreamp.first()
+                        mediaPlayerHandler.player.setEqualizer(bands, preamp)
+                    } else {
+                        mediaPlayerHandler.player.setEqualizer(List(10) { 0f }, 0f)
+                    }
                 }
             }
         }
+        makeToast(
+            if (next) {
+                "Spleeter Vocal Extractor (2stems): ON"
+            } else {
+                "Spleeter Vocal Extractor (2stems): OFF"
+            },
+        )
     }
 
     private val volumePlayerListener =
@@ -269,7 +279,8 @@ class SharedViewModel(
                 if (abs(mediaPlayerHandler.player.volume - targetVolume) > 0.0005f) {
                     mediaPlayerHandler.player.volume = targetVolume
                 }
-                if (_vocalsOnlyEnabled.value) {
+                mediaPlayerHandler.player.setVocalExtractor(_vocalsOnlyEnabled.value)
+                if (_vocalsOnlyEnabled.value && getPlatform() != Platform.Android) {
                     mediaPlayerHandler.player.setEqualizer(vocalsOnlyBandsDb, vocalsOnlyPreampDb)
                 }
             }

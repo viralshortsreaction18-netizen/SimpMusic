@@ -1836,7 +1836,7 @@ fun NowPlayingBottomSheet(
                             Column {
                                 ActionButton(
                                     icon = SimpIcons.GraphicEq,
-                                    textString = if (isVocalsOnly) "Vocals only (ON)" else "Vocals only",
+                                    textString = if (isVocalsOnly) "Vocals only (Spleeter ON)" else "Vocals only (Spleeter)",
                                     text = null,
                                     textColor = if (isVocalsOnly) seed else null,
                                     iconColor = if (isVocalsOnly) seed else Color.White,
