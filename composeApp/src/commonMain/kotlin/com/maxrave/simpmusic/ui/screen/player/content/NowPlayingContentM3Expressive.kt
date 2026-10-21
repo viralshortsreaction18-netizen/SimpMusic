@@ -113,6 +113,7 @@ import com.maxrave.simpmusic.ui.icon.AddCircleOutline
 import com.maxrave.simpmusic.ui.icon.CheckCircle
 import com.maxrave.simpmusic.ui.icon.Favorite
 import com.maxrave.simpmusic.ui.icon.FavoriteBorder
+import com.maxrave.simpmusic.ui.icon.GraphicEq
 import com.maxrave.simpmusic.ui.icon.Headphones
 import com.maxrave.simpmusic.ui.icon.Info
 import com.maxrave.simpmusic.ui.icon.MoreVert
@@ -1056,6 +1057,46 @@ internal fun ExpressiveVolumeRow(
                     tint = colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                onClick = { actions.onToggleVocalsOnly() },
+                shape = RoundedCornerShape(14.dp),
+                color =
+                    if (state.isVocalsOnly) {
+                        colorScheme.primaryContainer
+                    } else {
+                        colorScheme.surfaceContainerHighest
+                    },
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = SimpIcons.GraphicEq,
+                        contentDescription = "Vocals Only",
+                        tint =
+                            if (state.isVocalsOnly) {
+                                colorScheme.onPrimaryContainer
+                            } else {
+                                colorScheme.onSurfaceVariant
+                            },
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = "Vocals",
+                        style = typo().labelSmall,
+                        color =
+                            if (state.isVocalsOnly) {
+                                colorScheme.onPrimaryContainer
+                            } else {
+                                colorScheme.onSurfaceVariant
+                            },
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

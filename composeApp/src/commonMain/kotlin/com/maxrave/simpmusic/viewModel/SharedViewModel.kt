@@ -214,6 +214,37 @@ class SharedViewModel(
 
     private val _playerVolume = MutableStateFlow(1f)
 
+    private val _vocalsOnlyEnabled = MutableStateFlow(false)
+    val vocalsOnlyEnabled: StateFlow<Boolean> = _vocalsOnlyEnabled
+
+    // 10-band vocal isolation filter (31, 62, 125, 250, 500 Hz, 1, 2, 4, 8, 16 kHz):
+    // Deeply attenuates sub-bass/bass drums & bass guitar (31–125 Hz) and high cymbals/air (8–16 kHz)
+    // while boosting the core human vocal range (500 Hz – 4 kHz).
+    private val vocalsOnlyBandsDb = listOf(-12f, -12f, -10f, -3f, 4f, 6f, 6f, 4.5f, -6f, -12f)
+    private val vocalsOnlyPreampDb = -6f
+
+    fun toggleVocalsOnly() {
+        val next = !_vocalsOnlyEnabled.value
+        _vocalsOnlyEnabled.value = next
+        if (next) {
+            mediaPlayerHandler.player.setEqualizer(vocalsOnlyBandsDb, vocalsOnlyPreampDb)
+        } else {
+            viewModelScope.launch {
+                val eqEnabled = dataStoreManager.equalizerEnabled.first() == TRUE
+                val eqType = dataStoreManager.equalizerType.first()
+                if (eqEnabled && eqType == DataStoreManager.EQUALIZER_TYPE_BUILT_IN) {
+                    val stored = dataStoreManager.equalizerBands.first()
+                    val parsed = stored.split(",").mapNotNull { it.trim().toFloatOrNull() }
+                    val bands = List(10) { parsed.getOrElse(it) { 0f } }
+                    val preamp = dataStoreManager.equalizerPreamp.first()
+                    mediaPlayerHandler.player.setEqualizer(bands, preamp)
+                } else {
+                    mediaPlayerHandler.player.setEqualizer(List(10) { 0f }, 0f)
+                }
+            }
+        }
+    }
+
     private val volumePlayerListener =
         object : MediaPlayerListener {
             override fun onVolumeChanged(volume: Float) {
@@ -237,6 +268,9 @@ class SharedViewModel(
                 val targetVolume = _playerVolume.value
                 if (abs(mediaPlayerHandler.player.volume - targetVolume) > 0.0005f) {
                     mediaPlayerHandler.player.volume = targetVolume
+                }
+                if (_vocalsOnlyEnabled.value) {
+                    mediaPlayerHandler.player.setEqualizer(vocalsOnlyBandsDb, vocalsOnlyPreampDb)
                 }
             }
         }

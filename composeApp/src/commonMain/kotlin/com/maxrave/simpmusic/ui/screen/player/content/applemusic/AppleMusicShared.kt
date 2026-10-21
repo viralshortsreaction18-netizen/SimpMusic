@@ -93,6 +93,7 @@ import com.maxrave.simpmusic.ui.icon.AddCircleOutline
 import com.maxrave.simpmusic.ui.icon.CheckCircle
 import com.maxrave.simpmusic.ui.icon.FastForward
 import com.maxrave.simpmusic.ui.icon.FastRewind
+import com.maxrave.simpmusic.ui.icon.GraphicEq
 import com.maxrave.simpmusic.ui.icon.Groups
 import com.maxrave.simpmusic.ui.icon.Headphones
 import com.maxrave.simpmusic.ui.icon.Lyrics
@@ -754,6 +755,8 @@ internal fun AppleMusicTransportRow(
 internal fun AppleMusicVolumeRow(
     controller: DeviceVolumeController,
     modifier: Modifier = Modifier,
+    isVocalsOnly: Boolean = false,
+    onToggleVocalsOnly: (() -> Unit)? = null,
 ) {
     val currentVolume = controller.volumeFraction.coerceIn(0f, 1f)
     var previousVolume by rememberSaveable {
@@ -805,6 +808,41 @@ internal fun AppleMusicVolumeRow(
                         controller.setVolumeFraction(1f)
                     },
         )
+        if (onToggleVocalsOnly != null) {
+            Spacer(modifier = Modifier.width(10.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (isVocalsOnly) {
+                                Color.White
+                            } else {
+                                Color.White.copy(alpha = 0.14f)
+                            },
+                        ).clickable(onClick = onToggleVocalsOnly)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = SimpIcons.GraphicEq,
+                        contentDescription = "Vocals Only",
+                        tint = if (isVocalsOnly) Color.Black else Color.White,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = "Vocals",
+                        style = typo().labelSmall,
+                        color = if (isVocalsOnly) Color.Black else Color.White,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1042,7 +1080,11 @@ internal fun AppleMusicBottomCluster(
             AppleMusicPlaybackControls(state = state, actions = actions, typography = typography)
             Spacer(modifier = Modifier.height(18.dp))
             deviceVolumeController?.let { controller ->
-                AppleMusicVolumeRow(controller = controller)
+                AppleMusicVolumeRow(
+                    controller = controller,
+                    isVocalsOnly = state.isVocalsOnly,
+                    onToggleVocalsOnly = actions.onToggleVocalsOnly,
+                )
                 Spacer(modifier = Modifier.height(24.dp))
             }
         } else {

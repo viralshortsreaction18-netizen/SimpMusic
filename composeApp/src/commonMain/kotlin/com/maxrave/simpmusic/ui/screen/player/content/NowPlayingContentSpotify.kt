@@ -141,6 +141,7 @@ import com.maxrave.simpmusic.ui.icon.AvTimer
 import com.maxrave.simpmusic.ui.icon.CheckCircle
 import com.maxrave.simpmusic.ui.icon.Forward5
 import com.maxrave.simpmusic.ui.icon.Fullscreen
+import com.maxrave.simpmusic.ui.icon.GraphicEq
 import com.maxrave.simpmusic.ui.icon.Headphones
 import com.maxrave.simpmusic.ui.icon.Info
 import com.maxrave.simpmusic.ui.icon.MoreVert
@@ -2237,6 +2238,40 @@ internal fun SpotifyVolumeRow(
                     tint = state.secondaryTextColor(),
                     modifier = Modifier.size(18.dp),
                 )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (state.isVocalsOnly) {
+                                Color.White
+                            } else {
+                                Color.White.copy(alpha = 0.14f)
+                            },
+                        ).clickable {
+                            actions.onToggleVocalsOnly()
+                        }.padding(horizontal = 10.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = SimpIcons.GraphicEq,
+                        contentDescription = "Vocals Only",
+                        tint = if (state.isVocalsOnly) Color.Black else Color.White,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = "Vocals",
+                        style = typo().labelSmall,
+                        color = if (state.isVocalsOnly) Color.Black else Color.White,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

@@ -607,6 +607,7 @@ fun NowPlayingScreenContent(
     if (screenDataState.lyricsData != null && controllerState.isPlaying) {
         KeepScreenOn()
     }
+    val isVocalsOnly by sharedViewModel.vocalsOnlyEnabled.collectAsStateWithLifecycle()
     val state =
         NowPlayingContentState(
             screenData = screenDataState,
@@ -638,6 +639,7 @@ fun NowPlayingScreenContent(
             audioQualityLabel = formatState.toAudioQualityLabel(),
             lyricsOffsetMs = lyricsOffsetMs.toLong(),
             videoAspectRatio = rememberVideoAspectRatio(MAIN_PLAYER) ?: 16f / 9,
+            isVocalsOnly = isVocalsOnly,
         )
     val actions =
         NowPlayingContentActions(
@@ -701,6 +703,7 @@ fun NowPlayingScreenContent(
                 mediaPlayerHandler.removeMediaItem(index)
             },
             onQueueItemMore = { index, track -> queueMoreFor = index to track },
+            onToggleVocalsOnly = { sharedViewModel.toggleVocalsOnly() },
         )
 
     // Below `state`/`actions`: the landscape lyrics layout renders the current style's own track row
