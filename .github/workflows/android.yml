@@ -12,15 +12,6 @@ on:
       - '.github/**/*.md'
       - '.github/FUNDING.yml'
       - '.github/ISSUE_TEMPLATE/**'
-  pull_request:
-    branches: [ dev ]
-    paths-ignore:
-      - 'README.md'
-      - 'fastlane/**'
-      - 'assets/**'
-      - '.github/**/*.md'
-      - '.github/FUNDING.yml'
-      - '.github/ISSUE_TEMPLATE/**'
 
 permissions:
   contents: write
@@ -47,9 +38,11 @@ jobs:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
         run: |
+          echo "" >> ./gradle.properties
           if [ -n "$SENTRY_AUTH_TOKEN" ]; then
-            echo "" >> ./gradle.properties
             echo "isFullBuild=true" >> ./gradle.properties
+          else
+            echo "isFullBuild=false" >> ./gradle.properties
           fi
           echo "SENTRY_DSN=${SENTRY_DSN}" > ./local.properties
           echo "SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}" >> ./local.properties
@@ -60,7 +53,13 @@ jobs:
         run: ./gradlew exportLibraryDefinitions
 
       - name: Build release APK
-        run: ./gradlew androidApp:assembleRelease
+        run: |
+          set -o pipefail
+          if ! ./gradlew androidApp:assembleRelease --stacktrace 2>&1 | tee build.log; then
+            SUMMARY=$(grep -E "(^e: |FAILURE:|What went wrong:|^\* |Execution failed|> )" build.log | tail -n 30 | tr '\n' ' ')
+            echo "::error title=Gradle Build Error::${SUMMARY}"
+            exit 1
+          fi
 
       - name: Check build-tools version
         shell: bash
