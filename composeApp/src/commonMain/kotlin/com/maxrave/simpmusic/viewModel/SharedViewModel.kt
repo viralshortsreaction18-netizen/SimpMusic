@@ -395,9 +395,9 @@ class SharedViewModel(
             val savedVolume = dataStoreManager.playerVolume.first().coerceIn(0f, 1f)
             _playerVolume.value = savedVolume
             _controllerState.update { it.copy(volume = savedVolume) }
+            mediaPlayerHandler.player.volume = savedVolume
+            mediaPlayerHandler.onPlayerEvent(PlayerEvent.UpdateVolume(savedVolume))
         }
-        mediaPlayerHandler.player.volume = _playerVolume.value
-        mediaPlayerHandler.onPlayerEvent(PlayerEvent.UpdateVolume(_playerVolume.value))
         mediaPlayerHandler.player.addListener(volumePlayerListener)
         viewModelScope.launch {
             mediaPlayerHandler.nowPlayingState
