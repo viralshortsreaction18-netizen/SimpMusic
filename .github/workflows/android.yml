@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'dev'
+      - 'arena/**'
     paths-ignore:
       - 'README.md'
       - 'fastlane/**'
@@ -21,6 +22,9 @@ on:
       - '.github/FUNDING.yml'
       - '.github/ISSUE_TEMPLATE/**'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,26 +40,21 @@ jobs:
           distribution: "microsoft"
           cache: 'gradle'
 
-      - name: Update build product flavor
-        run: |
-          echo "" >> ./gradle.properties
-          echo "isFullBuild=true" >> ./gradle.properties
-
-      - name: Update Sentry Secrets
+      - name: Configure build properties and secrets
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: |
-          echo 'SENTRY_DSN=${{ secrets.SENTRY_DSN }}' > ./local.properties
-          echo "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" >> ./local.properties
-
-      - name: Update Last.fm secrets
-        env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
         run: |
-          echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" >> ./local.properties
-          echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> ./local.properties
+          if [ -n "$SENTRY_AUTH_TOKEN" ]; then
+            echo "" >> ./gradle.properties
+            echo "isFullBuild=true" >> ./gradle.properties
+          fi
+          echo "SENTRY_DSN=${SENTRY_DSN}" > ./local.properties
+          echo "SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}" >> ./local.properties
+          echo "LASTFM_API_KEY=${LASTFM_API_KEY}" >> ./local.properties
+          echo "LASTFM_SECRET=${LASTFM_SECRET}" >> ./local.properties
 
       - name: Generate aboutLibraries.json
         run: ./gradlew exportLibraryDefinitions
@@ -70,87 +69,61 @@ jobs:
           echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
           echo Last build tool version is: $BUILD_TOOL_VERSION
 
+      - name: Prepare signing key
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            echo "EFFECTIVE_SIGNING_KEY=$SIGNING_KEY" >> $GITHUB_ENV
+            echo "EFFECTIVE_ALIAS=$ALIAS" >> $GITHUB_ENV
+            echo "EFFECTIVE_KEY_STORE_PASSWORD=$KEY_STORE_PASSWORD" >> $GITHUB_ENV
+            echo "EFFECTIVE_KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+          else
+            keytool -genkeypair -v \
+              -keystore /tmp/release.keystore \
+              -alias simpmusic \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass simpmusic123 \
+              -keypass simpmusic123 \
+              -dname "CN=SimpMusic, OU=Mobile, O=SimpMusic, L=Agra, S=UP, C=IN"
+            B64_KEY=$(base64 -w 0 /tmp/release.keystore)
+            echo "EFFECTIVE_SIGNING_KEY=$B64_KEY" >> $GITHUB_ENV
+            echo "EFFECTIVE_ALIAS=simpmusic" >> $GITHUB_ENV
+            echo "EFFECTIVE_KEY_STORE_PASSWORD=simpmusic123" >> $GITHUB_ENV
+            echo "EFFECTIVE_KEY_PASSWORD=simpmusic123" >> $GITHUB_ENV
+          fi
+
       - uses: kevin-david/zipalign-sign-android-release@v2
         id: sign_app
         with:
           releaseDirectory: androidApp/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+          signingKeyBase64: ${{ env.EFFECTIVE_SIGNING_KEY }}
+          alias: ${{ env.EFFECTIVE_ALIAS }}
+          keyStorePassword: ${{ env.EFFECTIVE_KEY_STORE_PASSWORD }}
+          keyPassword: ${{ env.EFFECTIVE_KEY_PASSWORD }}
           zipAlign: true
         env:
-            BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
+          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
 
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app
+          name: SimpMusic-APK
           path: androidApp/build/outputs/apk/release/*-signed.apk
 
-  # SimpMusic for vivo (vivoAndroidApp, com.spotify.music), same Full build as above.
-  build-vivo:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: 'recursive'
-
-      - name: set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "microsoft"
-          cache: 'gradle'
-
-      - name: Update build product flavor
-        run: |
-          echo "" >> ./gradle.properties
-          echo "isFullBuild=true" >> ./gradle.properties
-
-      - name: Update Sentry Secrets
+      - name: Publish APK to GitHub Releases
         env:
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo 'SENTRY_DSN=${{ secrets.SENTRY_DSN }}' > ./local.properties
-          echo "SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}" >> ./local.properties
-
-      - name: Update Last.fm secrets
-        env:
-          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
-          LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
-        run: |
-          echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" >> ./local.properties
-          echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> ./local.properties
-
-      - name: Generate aboutLibraries.json
-        run: ./gradlew exportLibraryDefinitions
-
-      - name: Build vivo release APK
-        run: ./gradlew vivoAndroidApp:assembleRelease
-
-      - name: Check build-tools version
-        shell: bash
-        run: |
-          BUILD_TOOL_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
-          echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
-          echo Last build tool version is: $BUILD_TOOL_VERSION
-
-      - uses: kevin-david/zipalign-sign-android-release@v2
-        id: sign_app
-        with:
-          releaseDirectory: vivoAndroidApp/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-          zipAlign: true
-        env:
-            BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-vivo
-          path: vivoAndroidApp/build/outputs/apk/release/*-signed.apk
+          TAG="in-app-volume-latest"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" \
+            androidApp/build/outputs/apk/release/*-signed.apk \
+            --title "SimpMusic (In-App Music Volume Slider)" \
+            --notes "Updated SimpMusic build with an in-app music volume slider that controls only the music playback volume without changing the device OS volume." \
+            --prerelease

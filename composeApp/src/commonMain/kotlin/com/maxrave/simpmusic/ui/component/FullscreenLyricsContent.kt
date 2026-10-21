@@ -1076,6 +1076,9 @@ private fun FullscreenLyricsDesktopChrome(
                     onValueChange = {
                         isVolumeSliding = true
                         volumeValue = it
+                        sharedViewModel.onUIEvent(
+                            UIEvent.UpdateVolume(it.coerceIn(0f, 1f)),
+                        )
                     },
                     valueRange = 0f..1f,
                     modifier = Modifier.width(CHROME_VOLUME_SLIDER_WIDTH),

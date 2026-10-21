@@ -45,9 +45,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,6 +107,7 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.Star
 import com.maxrave.simpmusic.ui.icon.StarBorder
 import com.maxrave.simpmusic.ui.icon.VolumeDown
+import com.maxrave.simpmusic.ui.icon.VolumeOff
 import com.maxrave.simpmusic.ui.icon.VolumeUp
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentActions
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
@@ -751,17 +755,36 @@ internal fun AppleMusicVolumeRow(
     controller: DeviceVolumeController,
     modifier: Modifier = Modifier,
 ) {
+    val currentVolume = controller.volumeFraction.coerceIn(0f, 1f)
+    var previousVolume by rememberSaveable {
+        mutableFloatStateOf(currentVolume.takeIf { it > 0f } ?: 1f)
+    }
+    LaunchedEffect(currentVolume) {
+        if (currentVolume > 0f) {
+            previousVolume = currentVolume
+        }
+    }
+
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            imageVector = SimpIcons.VolumeDown,
-            contentDescription = "",
+            imageVector = if (currentVolume > 0f) SimpIcons.VolumeDown else SimpIcons.VolumeOff,
+            contentDescription = if (currentVolume > 0f) "Mute" else "Unmute",
             tint = AppleMusicTextSecondary,
-            modifier = Modifier.size(18.dp),
+            modifier =
+                Modifier
+                    .size(18.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        val target = if (currentVolume > 0f) 0f else previousVolume.coerceIn(0.1f, 1f)
+                        controller.setVolumeFraction(target)
+                    },
         )
         Spacer(modifier = Modifier.width(12.dp))
         Box(modifier = Modifier.weight(1f).height(18.dp), contentAlignment = Alignment.Center) {
             AppleMusicThinSlider(
-                value = controller.volumeFraction,
+                value = currentVolume,
                 activeColor = AppleMusicTrackActive,
                 onValueChange = { controller.setVolumeFraction(it) },
                 modifier = Modifier.fillMaxWidth(),
@@ -770,9 +793,17 @@ internal fun AppleMusicVolumeRow(
         Spacer(modifier = Modifier.width(12.dp))
         Icon(
             imageVector = SimpIcons.VolumeUp,
-            contentDescription = "",
+            contentDescription = "Max Volume",
             tint = AppleMusicTextSecondary,
-            modifier = Modifier.size(18.dp),
+            modifier =
+                Modifier
+                    .size(18.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        controller.setVolumeFraction(1f)
+                    },
         )
     }
 }

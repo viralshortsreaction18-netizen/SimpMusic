@@ -32,7 +32,9 @@ import com.maxrave.domain.data.model.promo.Promo
 import com.maxrave.domain.data.model.streams.TimeLine
 import com.maxrave.domain.data.model.update.UpdateData
 import com.maxrave.domain.data.player.GenericCastState
+import com.maxrave.domain.data.player.GenericMediaItem
 import com.maxrave.domain.data.player.LiveStreamRegistry
+import com.maxrave.domain.mediaservice.player.MediaPlayerListener
 import com.maxrave.domain.extension.decodeHtmlEntities
 import com.maxrave.domain.extension.isSong
 import com.maxrave.domain.extension.isVideo
@@ -210,6 +212,35 @@ class SharedViewModel(
 
     val castState: StateFlow<GenericCastState> get() = mediaPlayerHandler.castState
 
+    private val _playerVolume = MutableStateFlow(1f)
+
+    private val volumePlayerListener =
+        object : MediaPlayerListener {
+            override fun onVolumeChanged(volume: Float) {
+                val targetVolume = _playerVolume.value
+                // On Android, MediaServiceHandlerImpl.mayBeNormalizeVolume() resets player.volume = 1f
+                // when volume normalization is off. Re-apply the user's in-app volume so track
+                // transitions never reset the slider level.
+                if (getPlatform() == Platform.Android && abs(volume - targetVolume) > 0.0005f) {
+                    mediaPlayerHandler.player.volume = targetVolume
+                } else {
+                    val clamped = volume.coerceIn(0f, 1f)
+                    _playerVolume.value = clamped
+                    _controllerState.update { it.copy(volume = clamped) }
+                }
+            }
+
+            override fun onMediaItemTransition(
+                mediaItem: GenericMediaItem?,
+                reason: Int,
+            ) {
+                val targetVolume = _playerVolume.value
+                if (abs(mediaPlayerHandler.player.volume - targetVolume) > 0.0005f) {
+                    mediaPlayerHandler.player.volume = targetVolume
+                }
+            }
+        }
+
     private var _controllerState =
         MutableStateFlow<ControlState>(
             ControlState(
@@ -361,7 +392,13 @@ class SharedViewModel(
             dataStoreManager.getString("liked_guide").first().let {
                 isFirstLiked = it != STATUS_DONE
             }
+            val savedVolume = dataStoreManager.playerVolume.first().coerceIn(0f, 1f)
+            _playerVolume.value = savedVolume
+            _controllerState.update { it.copy(volume = savedVolume) }
         }
+        mediaPlayerHandler.player.volume = _playerVolume.value
+        mediaPlayerHandler.onPlayerEvent(PlayerEvent.UpdateVolume(_playerVolume.value))
+        mediaPlayerHandler.player.addListener(volumePlayerListener)
         viewModelScope.launch {
             mediaPlayerHandler.nowPlayingState
                 .distinctUntilChangedBy {
@@ -369,6 +406,9 @@ class SharedViewModel(
                 }.collectLatest { state ->
                     canvasJob?.cancel()
                     _nowPlayingState.value = state
+                    if (abs(mediaPlayerHandler.player.volume - _playerVolume.value) > 0.0005f) {
+                        mediaPlayerHandler.player.volume = _playerVolume.value
+                    }
 
                     // Seed the timeline from METADATA as soon as the track is known, instead of
                     // waiting for the player. SimpleMediaState.Ready carries a duration and only
@@ -534,7 +574,14 @@ class SharedViewModel(
                     Logger.w(tag, "ControllerJob is running")
                     mediaPlayerHandler.controlState.collectLatest {
                         Logger.w(tag, "ControlState is $it")
-                        _controllerState.value = it
+                        val effectiveVolume =
+                            if (getPlatform() == Platform.Android) {
+                                _playerVolume.value
+                            } else {
+                                _playerVolume.value = it.volume.coerceIn(0f, 1f)
+                                _playerVolume.value
+                            }
+                        _controllerState.value = it.copy(volume = effectiveVolume)
                         // Propagate crossfade state to timeline so UI can react
                         _timeline.update { timeline ->
                             timeline.copy(isCrossfading = it.isCrossfading)
@@ -1019,9 +1066,13 @@ class SharedViewModel(
                 }
 
                 is UIEvent.UpdateVolume -> {
-                    val newVolume = uiEvent.newVolume
-                    // Apply to the player first: persisting to DataStore is a suspending disk write
-                    // and must not sit between the user's gesture and the audible change.
+                    val newVolume = uiEvent.newVolume.coerceIn(0f, 1f)
+                    _playerVolume.value = newVolume
+                    _controllerState.update { it.copy(volume = newVolume) }
+                    // Apply directly to the player first: controls only in-app music playback
+                    // volume (ExoPlayer/mpv) without changing the device OS volume, and runs
+                    // before the suspending DataStore disk write.
+                    mediaPlayerHandler.player.volume = newVolume
                     mediaPlayerHandler.onPlayerEvent(PlayerEvent.UpdateVolume(newVolume))
                     dataStoreManager.setPlayerVolume(newVolume)
                 }
@@ -1030,6 +1081,7 @@ class SharedViewModel(
 
     override fun onCleared() {
         Logger.w("Check onCleared", "onCleared")
+        mediaPlayerHandler.player.removeListener(volumePlayerListener)
     }
 
     fun getLocation() {
