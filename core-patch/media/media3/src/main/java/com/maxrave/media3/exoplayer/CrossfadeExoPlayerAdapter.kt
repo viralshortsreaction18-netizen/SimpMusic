@@ -42,6 +42,7 @@ import com.maxrave.media3.audio.EqualizerAudioProcessor
 import com.maxrave.media3.audio.EqualizerCurve
 import com.maxrave.media3.audio.SleepFadeAudioProcessor
 import com.maxrave.media3.audio.SpleeterVocalAudioProcessor
+import com.maxrave.media3.audio.VocalExtractorConfig
 import com.maxrave.media3.service.mediasourcefactory.isLiveStreamDetected
 import com.maxrave.media3.exoplayer.CrossfadeExoPlayerAdapter.Companion.SPEED_PITCH_STEP
 import com.maxrave.media3.service.mediasourcefactory.MergingMediaSourceFactory
@@ -183,7 +184,7 @@ internal class CrossfadeExoPlayerAdapter(
     private var internalAudioEffects: AudioEffects = AudioEffects.NONE
 
     @Volatile
-    private var internalVocalExtractorEnabled: Boolean = false
+    private var internalVocalExtractorConfig: VocalExtractorConfig = VocalExtractorConfig.OFF
 
     @Volatile
     private var internalRepeatMode = PlayerConstants.REPEAT_MODE_OFF
@@ -571,7 +572,7 @@ internal class CrossfadeExoPlayerAdapter(
     private fun createExoPlayerInstance(): PlayerWithFilter {
         val crossfadeFilter = CrossfadeFilterAudioProcessor()
         val sleepFade = SleepFadeAudioProcessor { internalSleepFadeFactor }
-        val spleeterVocalExtractor = SpleeterVocalAudioProcessor { internalVocalExtractorEnabled }
+        val spleeterVocalExtractor = SpleeterVocalAudioProcessor { internalVocalExtractorConfig }
         val equalizer = EqualizerAudioProcessor { internalEqualizerCurve }
         val echo = EchoAudioProcessor { internalAudioEffects }
         val reverb = ConvolutionReverbAudioProcessor { internalAudioEffects }
@@ -1488,8 +1489,17 @@ internal class CrossfadeExoPlayerAdapter(
         internalAudioEffects = effects
     }
 
-    override fun setVocalExtractor(enabled: Boolean) {
-        internalVocalExtractorEnabled = enabled
+    override fun setVocalExtractor(
+        enabled: Boolean,
+        vocalGain: Float,
+        instrumentGain: Float,
+    ) {
+        internalVocalExtractorConfig =
+            VocalExtractorConfig(
+                enabled = enabled,
+                vocalGain = vocalGain.coerceIn(0f, 1.5f),
+                instrumentGain = instrumentGain.coerceIn(0f, 1.0f),
+            )
     }
 
     override var skipSilenceEnabled: Boolean

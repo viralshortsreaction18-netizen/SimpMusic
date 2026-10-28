@@ -64,6 +64,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -1833,15 +1834,77 @@ fun NowPlayingBottomSheet(
                         if (it) {
                             val sharedViewModel = koinInject<SharedViewModel>()
                             val isVocalsOnly by sharedViewModel.vocalsOnlyEnabled.collectAsStateWithLifecycle()
+                            val moisesVocalLevel by sharedViewModel.moisesVocalLevel.collectAsStateWithLifecycle()
+                            val moisesInstrumentLevel by sharedViewModel.moisesInstrumentLevel.collectAsStateWithLifecycle()
                             Column {
                                 ActionButton(
                                     icon = SimpIcons.GraphicEq,
-                                    textString = if (isVocalsOnly) "Vocals only (Spleeter ON)" else "Vocals only (Spleeter)",
+                                    textString = if (isVocalsOnly) "Moises Live: Vocals Only (ON)" else "Moises Live: Vocals Only",
                                     text = null,
                                     textColor = if (isVocalsOnly) seed else null,
                                     iconColor = if (isVocalsOnly) seed else Color.White,
                                 ) {
                                     sharedViewModel.toggleVocalsOnly()
+                                }
+                                AnimatedVisibility(visible = isVocalsOnly) {
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 24.dp, vertical = 6.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color.White.copy(alpha = 0.06f))
+                                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                        ) {
+                                            Text(
+                                                text = "Vocals",
+                                                style = typo().labelMedium,
+                                                color = Color.White,
+                                            )
+                                            Text(
+                                                text = "${(moisesVocalLevel * 100f).toInt()}%",
+                                                style = typo().labelMedium,
+                                                color = seed,
+                                            )
+                                        }
+                                        Slider(
+                                            value = moisesVocalLevel,
+                                            onValueChange = { newVocal ->
+                                                sharedViewModel.setMoisesStemLevels(newVocal, moisesInstrumentLevel)
+                                            },
+                                            valueRange = 0f..1.5f,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                        ) {
+                                            Text(
+                                                text = "Instruments",
+                                                style = typo().labelMedium,
+                                                color = Color.White,
+                                            )
+                                            Text(
+                                                text = "${(moisesInstrumentLevel * 100f).toInt()}%",
+                                                style = typo().labelMedium,
+                                                color = seed,
+                                            )
+                                        }
+                                        Slider(
+                                            value = moisesInstrumentLevel,
+                                            onValueChange = { newInst ->
+                                                sharedViewModel.setMoisesStemLevels(moisesVocalLevel, newInst)
+                                            },
+                                            valueRange = 0f..1.0f,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
                                 }
                                 ActionButton(
                                     icon = SimpIcons.Speed,

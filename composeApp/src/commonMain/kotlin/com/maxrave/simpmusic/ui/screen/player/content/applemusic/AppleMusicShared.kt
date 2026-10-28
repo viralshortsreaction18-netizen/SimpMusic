@@ -45,12 +45,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +90,6 @@ import com.maxrave.simpmusic.ui.icon.AddCircleOutline
 import com.maxrave.simpmusic.ui.icon.CheckCircle
 import com.maxrave.simpmusic.ui.icon.FastForward
 import com.maxrave.simpmusic.ui.icon.FastRewind
-import com.maxrave.simpmusic.ui.icon.GraphicEq
 import com.maxrave.simpmusic.ui.icon.Groups
 import com.maxrave.simpmusic.ui.icon.Headphones
 import com.maxrave.simpmusic.ui.icon.Lyrics
@@ -108,7 +104,6 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.Star
 import com.maxrave.simpmusic.ui.icon.StarBorder
 import com.maxrave.simpmusic.ui.icon.VolumeDown
-import com.maxrave.simpmusic.ui.icon.VolumeOff
 import com.maxrave.simpmusic.ui.icon.VolumeUp
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentActions
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
@@ -755,39 +750,18 @@ internal fun AppleMusicTransportRow(
 internal fun AppleMusicVolumeRow(
     controller: DeviceVolumeController,
     modifier: Modifier = Modifier,
-    isVocalsOnly: Boolean = false,
-    onToggleVocalsOnly: (() -> Unit)? = null,
 ) {
-    val currentVolume = controller.volumeFraction.coerceIn(0f, 1f)
-    var previousVolume by rememberSaveable {
-        mutableFloatStateOf(currentVolume.takeIf { it > 0f } ?: 1f)
-    }
-    LaunchedEffect(currentVolume) {
-        if (currentVolume > 0f) {
-            previousVolume = currentVolume
-        }
-    }
-
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            imageVector = if (currentVolume > 0f) SimpIcons.VolumeDown else SimpIcons.VolumeOff,
-            contentDescription = if (currentVolume > 0f) "Mute" else "Unmute",
+            imageVector = SimpIcons.VolumeDown,
+            contentDescription = "",
             tint = AppleMusicTextSecondary,
-            modifier =
-                Modifier
-                    .size(18.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        val target = if (currentVolume > 0f) 0f else previousVolume.coerceIn(0.1f, 1f)
-                        controller.setVolumeFraction(target)
-                    },
+            modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(12.dp))
         Box(modifier = Modifier.weight(1f).height(18.dp), contentAlignment = Alignment.Center) {
             AppleMusicThinSlider(
-                value = currentVolume,
+                value = controller.volumeFraction,
                 activeColor = AppleMusicTrackActive,
                 onValueChange = { controller.setVolumeFraction(it) },
                 modifier = Modifier.fillMaxWidth(),
@@ -796,53 +770,10 @@ internal fun AppleMusicVolumeRow(
         Spacer(modifier = Modifier.width(12.dp))
         Icon(
             imageVector = SimpIcons.VolumeUp,
-            contentDescription = "Max Volume",
+            contentDescription = "",
             tint = AppleMusicTextSecondary,
-            modifier =
-                Modifier
-                    .size(18.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        controller.setVolumeFraction(1f)
-                    },
+            modifier = Modifier.size(18.dp),
         )
-        if (onToggleVocalsOnly != null) {
-            Spacer(modifier = Modifier.width(10.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            if (isVocalsOnly) {
-                                Color.White
-                            } else {
-                                Color.White.copy(alpha = 0.14f)
-                            },
-                        ).clickable(onClick = onToggleVocalsOnly)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        imageVector = SimpIcons.GraphicEq,
-                        contentDescription = "Vocals Only",
-                        tint = if (isVocalsOnly) Color.Black else Color.White,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Text(
-                        text = "Vocals",
-                        style = typo().labelSmall,
-                        color = if (isVocalsOnly) Color.Black else Color.White,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -1080,11 +1011,7 @@ internal fun AppleMusicBottomCluster(
             AppleMusicPlaybackControls(state = state, actions = actions, typography = typography)
             Spacer(modifier = Modifier.height(18.dp))
             deviceVolumeController?.let { controller ->
-                AppleMusicVolumeRow(
-                    controller = controller,
-                    isVocalsOnly = state.isVocalsOnly,
-                    onToggleVocalsOnly = actions.onToggleVocalsOnly,
-                )
+                AppleMusicVolumeRow(controller = controller)
                 Spacer(modifier = Modifier.height(24.dp))
             }
         } else {

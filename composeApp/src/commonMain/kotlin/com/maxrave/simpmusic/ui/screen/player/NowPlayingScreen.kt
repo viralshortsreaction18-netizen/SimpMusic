@@ -1,3 +1,15 @@
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+
+
+
 @file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.maxrave.simpmusic.ui.screen.player
@@ -607,7 +619,6 @@ fun NowPlayingScreenContent(
     if (screenDataState.lyricsData != null && controllerState.isPlaying) {
         KeepScreenOn()
     }
-    val isVocalsOnly by sharedViewModel.vocalsOnlyEnabled.collectAsStateWithLifecycle()
     val state =
         NowPlayingContentState(
             screenData = screenDataState,
@@ -639,7 +650,6 @@ fun NowPlayingScreenContent(
             audioQualityLabel = formatState.toAudioQualityLabel(),
             lyricsOffsetMs = lyricsOffsetMs.toLong(),
             videoAspectRatio = rememberVideoAspectRatio(MAIN_PLAYER) ?: 16f / 9,
-            isVocalsOnly = isVocalsOnly,
         )
     val actions =
         NowPlayingContentActions(
@@ -703,7 +713,6 @@ fun NowPlayingScreenContent(
                 mediaPlayerHandler.removeMediaItem(index)
             },
             onQueueItemMore = { index, track -> queueMoreFor = index to track },
-            onToggleVocalsOnly = { sharedViewModel.toggleVocalsOnly() },
         )
 
     // Below `state`/`actions`: the landscape lyrics layout renders the current style's own track row

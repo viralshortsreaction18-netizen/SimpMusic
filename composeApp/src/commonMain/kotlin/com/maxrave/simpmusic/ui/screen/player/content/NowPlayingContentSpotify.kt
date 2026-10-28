@@ -72,7 +72,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -141,7 +140,6 @@ import com.maxrave.simpmusic.ui.icon.AvTimer
 import com.maxrave.simpmusic.ui.icon.CheckCircle
 import com.maxrave.simpmusic.ui.icon.Forward5
 import com.maxrave.simpmusic.ui.icon.Fullscreen
-import com.maxrave.simpmusic.ui.icon.GraphicEq
 import com.maxrave.simpmusic.ui.icon.Headphones
 import com.maxrave.simpmusic.ui.icon.Info
 import com.maxrave.simpmusic.ui.icon.MoreVert
@@ -153,9 +151,6 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.Subtitles
 import com.maxrave.simpmusic.ui.icon.SubtitlesOff
 import com.maxrave.simpmusic.ui.icon.ThumbsUpDown
-import com.maxrave.simpmusic.ui.icon.VolumeDown
-import com.maxrave.simpmusic.ui.icon.VolumeOff
-import com.maxrave.simpmusic.ui.icon.VolumeUp
 import com.maxrave.simpmusic.ui.screen.player.content.applemusic.AudioOutputSheetHost
 import com.maxrave.simpmusic.ui.theme.blackMoreOverlay
 import com.maxrave.simpmusic.ui.theme.overlay
@@ -2134,145 +2129,5 @@ internal fun ColumnScope.SpotifyPlaybackControls(
         state.controllerState,
     ) {
         actions.onUIEvent(it)
-    }
-    SpotifyVolumeRow(
-        state = state,
-        actions = actions,
-    )
-}
-
-@Composable
-internal fun SpotifyVolumeRow(
-    state: NowPlayingContentState,
-    actions: NowPlayingContentActions,
-    modifier: Modifier = Modifier,
-) {
-    val currentVolume = state.controllerState.volume.coerceIn(0f, 1f)
-    var previousVolume by rememberSaveable {
-        mutableFloatStateOf(currentVolume.takeIf { it > 0f } ?: 1f)
-    }
-    LaunchedEffect(currentVolume) {
-        if (currentVolume > 0f) {
-            previousVolume = currentVolume
-        }
-    }
-
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(top = 6.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            IconButton(
-                modifier = Modifier.size(24.dp),
-                onClick = {
-                    val target = if (currentVolume > 0f) 0f else previousVolume.coerceIn(0.1f, 1f)
-                    actions.onUIEvent(UIEvent.UpdateVolume(target))
-                },
-            ) {
-                Icon(
-                    imageVector = if (currentVolume > 0f) SimpIcons.VolumeDown else SimpIcons.VolumeOff,
-                    contentDescription = if (currentVolume > 0f) "Mute" else "Unmute",
-                    tint = state.secondaryTextColor(),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Slider(
-                value = currentVolume,
-                onValueChange = {
-                    actions.onUIEvent(UIEvent.UpdateVolume(it.coerceIn(0f, 1f)))
-                },
-                onValueChangeFinished = {},
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .padding(horizontal = 10.dp)
-                        .height(24.dp),
-                track = { sliderState ->
-                    SliderDefaults.Track(
-                        modifier = Modifier.height(4.dp),
-                        enabled = true,
-                        sliderState = sliderState,
-                        colors =
-                            SliderDefaults.colors().copy(
-                                thumbColor = state.sliderTrackColor,
-                                activeTrackColor = state.sliderTrackColor,
-                                inactiveTrackColor = Color.Gray.copy(alpha = 0.4f),
-                            ),
-                        thumbTrackGapSize = 0.dp,
-                        drawTick = { _, _ -> },
-                        drawStopIndicator = null,
-                    )
-                },
-                thumb = {
-                    SliderDefaults.Thumb(
-                        modifier =
-                            Modifier
-                                .height(16.dp)
-                                .width(8.dp)
-                                .padding(vertical = 3.dp),
-                        thumbSize = DpSize(8.dp, 8.dp),
-                        interactionSource = remember { MutableInteractionSource() },
-                        colors =
-                            SliderDefaults.colors().copy(
-                                thumbColor = state.sliderTrackColor,
-                                activeTrackColor = state.sliderTrackColor,
-                                inactiveTrackColor = Color.Gray.copy(alpha = 0.4f),
-                            ),
-                        enabled = true,
-                    )
-                },
-            )
-            IconButton(
-                modifier = Modifier.size(24.dp),
-                onClick = {
-                    actions.onUIEvent(UIEvent.UpdateVolume(1f))
-                },
-            ) {
-                Icon(
-                    imageVector = SimpIcons.VolumeUp,
-                    contentDescription = "Max Volume",
-                    tint = state.secondaryTextColor(),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            if (state.isVocalsOnly) {
-                                Color.White
-                            } else {
-                                Color.White.copy(alpha = 0.14f)
-                            },
-                        ).clickable {
-                            actions.onToggleVocalsOnly()
-                        }.padding(horizontal = 10.dp, vertical = 4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        imageVector = SimpIcons.GraphicEq,
-                        contentDescription = "Vocals Only",
-                        tint = if (state.isVocalsOnly) Color.Black else Color.White,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Text(
-                        text = "Vocals",
-                        style = typo().labelSmall,
-                        color = if (state.isVocalsOnly) Color.Black else Color.White,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
     }
 }

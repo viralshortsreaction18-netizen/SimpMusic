@@ -9,20 +9,25 @@ import java.nio.ByteOrder
 import kotlin.math.roundToInt
 
 /**
- * Media3 [AudioProcessor] running Deezer's **Spleeter** 2-stems (`vocals` / `accompaniment`)
- * vocal extractor (`https://github.com/deezer/spleeter`).
- *
- * Follows the exact contract established by [EqualizerAudioProcessor] and
- * [ConvolutionReverbAudioProcessor]:
- * - `isActive()` is deliberately NOT overridden so `BaseAudioProcessor` answers it from the format
- *   returned by [onConfigure];
- * - samples [enabled] on every buffer so toggling Spleeter Vocal Extractor mid-song takes effect
- *   immediately on all active and precached ExoPlayer instances;
- * - processes 16-bit PCM in stereo (or mono promoted to dual-mono).
+ * Live stem separation settings for [SpleeterVocalAudioProcessor] (Moises Live + Spleeter 2-stems).
+ */
+data class VocalExtractorConfig(
+    val enabled: Boolean = false,
+    val vocalGain: Float = 1.0f,
+    val instrumentGain: Float = 0.0f,
+) {
+    companion object {
+        val OFF = VocalExtractorConfig(enabled = false, vocalGain = 1.0f, instrumentGain = 1.0f)
+    }
+}
+
+/**
+ * Media3 [AudioProcessor] running on-device real-time **Moises Live + Deezer Spleeter** 2-stems
+ * (`vocals` / `instruments`) separation.
  */
 @UnstableApi
 class SpleeterVocalAudioProcessor(
-    private val enabled: () -> Boolean,
+    private val configSupplier: () -> VocalExtractorConfig,
 ) : BaseAudioProcessor() {
     private var sampleRate = 0
     private var channelCount = 0
@@ -67,9 +72,9 @@ class SpleeterVocalAudioProcessor(
         val remaining = inputBuffer.remaining()
         if (remaining == 0) return
 
-        val isNowEnabled = enabled()
+        val cfg = configSupplier()
         val currentExtractor = extractor
-        if (!isNowEnabled || currentExtractor == null) {
+        if (!cfg.enabled || currentExtractor == null) {
             if (wasEnabled) {
                 currentExtractor?.flush()
                 wasEnabled = false
@@ -104,7 +109,14 @@ class SpleeterVocalAudioProcessor(
             }
         }
 
-        currentExtractor.writeStereo(inLeft, inRight, 0, frameCount)
+        currentExtractor.writeStereo(
+            inLeft = inLeft,
+            inRight = inRight,
+            offset = 0,
+            frameCount = frameCount,
+            vocalGain = cfg.vocalGain,
+            instrumentGain = cfg.instrumentGain,
+        )
         val avail = currentExtractor.availableFrames
         if (avail <= 0) {
             replaceOutputBuffer(0).flip()

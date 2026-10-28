@@ -217,6 +217,12 @@ class SharedViewModel(
     private val _vocalsOnlyEnabled = MutableStateFlow(false)
     val vocalsOnlyEnabled: StateFlow<Boolean> = _vocalsOnlyEnabled
 
+    private val _moisesVocalLevel = MutableStateFlow(1.0f)
+    val moisesVocalLevel: StateFlow<Float> = _moisesVocalLevel
+
+    private val _moisesInstrumentLevel = MutableStateFlow(0.0f)
+    val moisesInstrumentLevel: StateFlow<Float> = _moisesInstrumentLevel
+
     // 10-band vocal isolation filter (31, 62, 125, 250, 500 Hz, 1, 2, 4, 8, 16 kHz):
     // Deeply attenuates sub-bass/bass drums & bass guitar (31–125 Hz) and high cymbals/air (8–16 kHz)
     // while boosting the core human vocal range (500 Hz – 4 kHz).
@@ -226,7 +232,15 @@ class SharedViewModel(
     fun toggleVocalsOnly() {
         val next = !_vocalsOnlyEnabled.value
         _vocalsOnlyEnabled.value = next
-        mediaPlayerHandler.player.setVocalExtractor(next)
+        if (next && _moisesInstrumentLevel.value > 0.01f && _moisesVocalLevel.value < 0.01f) {
+            _moisesVocalLevel.value = 1.0f
+            _moisesInstrumentLevel.value = 0.0f
+        }
+        mediaPlayerHandler.player.setVocalExtractor(
+            enabled = next,
+            vocalGain = _moisesVocalLevel.value,
+            instrumentGain = _moisesInstrumentLevel.value,
+        )
         if (getPlatform() != Platform.Android) {
             if (next) {
                 mediaPlayerHandler.player.setEqualizer(vocalsOnlyBandsDb, vocalsOnlyPreampDb)
@@ -248,10 +262,28 @@ class SharedViewModel(
         }
         makeToast(
             if (next) {
-                "Spleeter Vocal Extractor (2stems): ON"
+                "Moises Live Vocals Only: ON (Instruments 0%)"
             } else {
-                "Spleeter Vocal Extractor (2stems): OFF"
+                "Moises Live Vocals Only: OFF"
             },
+        )
+    }
+
+    fun setMoisesStemLevels(
+        vocalLevel: Float,
+        instrumentLevel: Float,
+    ) {
+        val v = vocalLevel.coerceIn(0f, 1.5f)
+        val i = instrumentLevel.coerceIn(0f, 1.0f)
+        _moisesVocalLevel.value = v
+        _moisesInstrumentLevel.value = i
+        if (!_vocalsOnlyEnabled.value) {
+            _vocalsOnlyEnabled.value = true
+        }
+        mediaPlayerHandler.player.setVocalExtractor(
+            enabled = true,
+            vocalGain = v,
+            instrumentGain = i,
         )
     }
 
@@ -279,7 +311,11 @@ class SharedViewModel(
                 if (abs(mediaPlayerHandler.player.volume - targetVolume) > 0.0005f) {
                     mediaPlayerHandler.player.volume = targetVolume
                 }
-                mediaPlayerHandler.player.setVocalExtractor(_vocalsOnlyEnabled.value)
+                mediaPlayerHandler.player.setVocalExtractor(
+                    enabled = _vocalsOnlyEnabled.value,
+                    vocalGain = _moisesVocalLevel.value,
+                    instrumentGain = _moisesInstrumentLevel.value,
+                )
                 if (_vocalsOnlyEnabled.value && getPlatform() != Platform.Android) {
                     mediaPlayerHandler.player.setEqualizer(vocalsOnlyBandsDb, vocalsOnlyPreampDb)
                 }

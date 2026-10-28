@@ -1110,9 +1110,6 @@ fun MiniPlayer(
                                                 onValueChange = {
                                                     isVolumeSliding = true
                                                     volumeValue = it
-                                                    sharedViewModel.onUIEvent(
-                                                        UIEvent.UpdateVolume(it.coerceIn(0f, 1f)),
-                                                    )
                                                 },
                                                 valueRange = 0f..1f,
                                                 modifier =

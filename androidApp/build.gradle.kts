@@ -204,10 +204,9 @@ sentry {
                 println("Failed to load SENTRY_AUTH_TOKEN from local.properties: ${e.message}")
                 null
             }
-        val hasToken = !token.isNullOrBlank()
         authToken.set(token ?: "")
-        includeProguardMapping.set(hasToken)
-        autoUploadProguardMapping.set(hasToken)
+        includeProguardMapping.set(true)
+        autoUploadProguardMapping.set(true)
     } else {
         includeProguardMapping.set(false)
         autoUploadProguardMapping.set(false)

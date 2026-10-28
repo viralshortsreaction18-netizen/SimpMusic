@@ -205,9 +205,14 @@ interface MediaPlayerInterface {
     fun setAudioEffects(effects: AudioEffects) = Unit
 
     /**
-     * Enable or disable the Spleeter 2-stems (`vocals` / `accompaniment`) vocal extractor.
+     * Enable or disable the Spleeter + Moises Live 2-stems (`vocals` / `instruments`) separator,
+     * with independent live stem gains ([vocalGain] `0f..1.5f`, [instrumentGain] `0f..1f`).
      */
-    fun setVocalExtractor(enabled: Boolean) = Unit
+    fun setVocalExtractor(
+        enabled: Boolean,
+        vocalGain: Float = 1.0f,
+        instrumentGain: Float = 0.0f,
+    ) = Unit
 
     /**
      * The outputs this player can render into right now, with the one the sound is leaving by

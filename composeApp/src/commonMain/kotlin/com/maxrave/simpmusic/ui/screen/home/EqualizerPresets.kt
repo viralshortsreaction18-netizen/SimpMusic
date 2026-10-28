@@ -60,7 +60,6 @@ val EQUALIZER_PRESETS: List<EqualizerPreset> =
         preset("Treble booster", 0f, 0f, 0f, 0f, 0f, 0f, 2.5f, 4.5f, 5.5f, 6f),
         preset("Treble reducer", 0f, 0f, 0f, 0f, 0f, 0f, -2.5f, -4.5f, -5.5f, -6f),
         preset("Vocal booster", -2.5f, -3f, -2.5f, 1.5f, 4f, 4f, 3.5f, 2f, 0f, -1.5f),
-        preset("Vocals only", -12f, -12f, -10f, -3f, 4f, 6f, 6f, 4.5f, -6f, -12f),
     )
 
 private fun preset(

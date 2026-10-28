@@ -146,8 +146,6 @@ class NowPlayingContentState(
      * its video frame from this one value, so a frame and the spacer that measures it cannot drift.
      */
     val videoAspectRatio: Float = 16f / 9,
-    /** Whether the in-player "Vocals Only" vocal-isolation filter is currently active. */
-    val isVocalsOnly: Boolean = false,
 )
 
 /**
@@ -182,6 +180,4 @@ class NowPlayingContentActions(
     val onRemoveQueueItem: (index: Int) -> Unit,
     /** Opens the full song sheet for one queue entry; `index` is absolute, as above. */
     val onQueueItemMore: (index: Int, track: Track) -> Unit,
-    /** Toggles the in-player "Vocals Only" vocal-isolation filter. */
-    val onToggleVocalsOnly: () -> Unit = {},
 )
